@@ -1,6 +1,6 @@
 {
   "name": "youtube-hybrid-mcp",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Hybrid YouTube MCP server using API and yt-dlp",
   "main": "dist/index.js",
   "type": "module",
