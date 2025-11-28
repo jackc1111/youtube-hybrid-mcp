@@ -328,8 +328,19 @@ class YouTubeMCPServer {
           }
           const [start, end] = line.split(' --> ');
           const startTime = this.timeToSeconds(start);
-          const duration = this.timeToSeconds(end) - startTime;
-          currentItem = { text: '', duration, offset: startTime * 1000 };
+          const endTime = this.timeToSeconds(end);
+          const duration = endTime - startTime;
+          const offset = startTime * 1000;
+          const endOffset = endTime * 1000;
+
+          currentItem = {
+            text: '',
+            duration,
+            offset,
+            endTime: endOffset,
+            startTimeFormatted: this.formatTime(offset),
+            endTimeFormatted: this.formatTime(endOffset)
+          };
         } else if (currentItem && line.trim() && !line.startsWith('WEBVTT') && !line.match(/^\d+$/)) {
           currentItem.text += line + ' ';
         }
@@ -619,6 +630,20 @@ class YouTubeMCPServer {
     const minutes = parseInt(parts[1]) || 0;
     const seconds = parseFloat(parts[2]) || 0;
     return hours * 3600 + minutes * 60 + seconds;
+  }
+
+  private formatTime(milliseconds: number): string {
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const ms = Math.floor(milliseconds % 1000);
+
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+    } else {
+      return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+    }
   }
 
   async run() {
