@@ -90,6 +90,11 @@ class YouTubeMCPServer {
                           type: "string",
                           description: "Language code (default: en)",
                           default: "en"
+                      },
+                      saveToFile: {
+                          type: "boolean",
+                          description: "Save subtitles as .vtt file (default: false)",
+                          default: false
                       }
                   },
                   required: ["videoId"]
@@ -178,7 +183,7 @@ class YouTubeMCPServer {
         case "get_comments":
           return await this.getComments((args as any).videoId, (args as any).maxResults || 10);
         case "get_subtitles":
-          return await this.getSubtitles((args as any).videoId, (args as any).language || "en");
+          return await this.getSubtitles((args as any).videoId, (args as any).language || "en", (args as any).saveToFile || false);
         case "get_related_videos":
           return await this.getRelatedVideos((args as any).videoId, (args as any).maxResults || 10);
         case "get_channel_info":
@@ -268,7 +273,7 @@ class YouTubeMCPServer {
     }
   }
 
-  private async getSubtitles(videoId: string, language: string) {
+  private async getSubtitles(videoId: string, language: string, saveToFile: boolean = false) {
     try {
       // First, check if subtitles are available
       const availableSubs = await this.checkSubtitlesAvailability(videoId, language);
@@ -349,16 +354,29 @@ class YouTubeMCPServer {
         transcript.push(currentItem);
       }
 
+      // Generate VTT content if saveToFile is true
+      let generatedVttContent = '';
+      if (saveToFile && transcript.length > 0) {
+        generatedVttContent = this.generateVTTContent(transcript);
+      }
+
+      const result: any = {
+        videoId,
+        language,
+        available: true,
+        transcript
+      };
+
+      if (saveToFile) {
+        result.vttContent = generatedVttContent;
+        result.fileName = `${videoId}_${language}.vtt`;
+      }
+
       return {
         content: [
           {
             type: "text",
-            text: JSON.stringify({
-              videoId,
-              language,
-              available: true,
-              transcript
-            }, null, 2)
+            text: JSON.stringify(result, null, 2)
           }
         ]
       };
@@ -645,6 +663,33 @@ class YouTubeMCPServer {
       return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
     }
   }
+
+  private generateVTTContent(transcript: any[]): string {
+    let vttContent = 'WEBVTT\n\n';
+
+    transcript.forEach((item, index) => {
+      // Convert milliseconds back to VTT time format (HH:MM:SS.mmm)
+      const startTime = this.formatVTTTime(item.offset);
+      const endTime = this.formatVTTTime(item.endTime);
+
+      vttContent += `${index + 1}\n`;
+      vttContent += `${startTime} --> ${endTime}\n`;
+      vttContent += `${item.text.trim()}\n\n`;
+    });
+
+    return vttContent;
+  }
+
+  private formatVTTTime(milliseconds: number): string {
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const ms = Math.floor(milliseconds % 1000);
+
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+  }
+
 
   async run() {
     const transport = new StdioServerTransport();
