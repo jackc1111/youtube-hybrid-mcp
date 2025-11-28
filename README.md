@@ -66,24 +66,98 @@ export YOUTUBE_API_KEY=your_api_key_here
 
 **Note**: Keep your API key secure and never commit it to version control.
 
-## Usage
+## Configuration
 
-Set your YouTube API key:
+### Environment Setup
+
+Set your YouTube API key as an environment variable:
 
 ```bash
 export YOUTUBE_API_KEY=your_api_key_here
 ```
 
-Run the server:
+### Editor/IDE Configuration
+
+#### VSCode (with KiloCode extension)
+Add to your MCP settings (usually in `settings.json` or MCP configuration):
+
+```json
+{
+  "mcpServers": {
+    "youtube": {
+      "command": "npx",
+      "args": ["-y", "youtube-hybrid-mcp"],
+      "env": {
+        "YOUTUBE_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+#### Cursor
+Add to your `.cursorrules` or MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "youtube": {
+      "command": "npx",
+      "args": ["-y", "youtube-hybrid-mcp"],
+      "env": {
+        "YOUTUBE_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+#### Claude Desktop
+Add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "youtube": {
+      "command": "npx",
+      "args": ["-y", "youtube-hybrid-mcp"],
+      "env": {
+        "YOUTUBE_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+#### Other MCP-compatible editors
+For any MCP-compatible editor, use this configuration:
+
+```json
+{
+  "mcpServers": {
+    "youtube": {
+      "command": "npx",
+      "args": ["-y", "youtube-hybrid-mcp"],
+      "env": {
+        "YOUTUBE_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+## Usage
+
+Run the server directly:
 
 ```bash
 npm start
 ```
 
-Or directly:
+Or via npx:
 
 ```bash
-node dist/index.js
+npx youtube-hybrid-mcp
 ```
 
 ## Tools
