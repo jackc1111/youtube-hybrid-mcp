@@ -12,7 +12,7 @@ A Model Context Protocol (MCP) server that provides YouTube video tools using bo
 
 - Node.js 18+
 - YouTube Data API v3 key (see [Getting API Key](#getting-youtube-api-key))
-- yt-dlp installed and available in PATH
+- yt-dlp (optional, required only for subtitles functionality - see [Installing yt-dlp](#installing-yt-dlp))
 
 ## Installation
 
@@ -65,6 +65,44 @@ export YOUTUBE_API_KEY=your_api_key_here
 ```
 
 **Note**: Keep your API key secure and never commit it to version control.
+
+## Installing yt-dlp
+
+yt-dlp is required only for the `get_subtitles` tool. If you don't need subtitles functionality, you can skip this step.
+
+### Windows
+```bash
+pip install yt-dlp
+```
+
+### macOS
+```bash
+pip install yt-dlp
+# or using Homebrew
+brew install yt-dlp
+```
+
+### Linux
+```bash
+pip install yt-dlp
+# or using package manager
+# Ubuntu/Debian
+sudo apt install yt-dlp
+# Fedora
+sudo dnf install yt-dlp
+# Arch Linux
+sudo pacman -S yt-dlp
+```
+
+### Verify Installation
+After installation, verify yt-dlp is in your PATH:
+```bash
+yt-dlp --version
+```
+
+If yt-dlp is not found, you may need to add Python Scripts to your PATH:
+- **Windows**: Add `%USERPROFILE%\AppData\Roaming\Python\Python3X\Scripts` to PATH
+- **macOS/Linux**: Add `~/.local/bin` to PATH
 
 ## Configuration
 
@@ -184,6 +222,36 @@ Extracts subtitles/transcript from a YouTube video.
 **Parameters:**
 - `videoId` (string): YouTube video ID
 - `language` (string, optional): Language code (default: "en")
+
+### get_related_videos
+
+Gets videos related to a specific video (shows other videos from the same channel).
+
+**Parameters:**
+- `videoId` (string): YouTube video ID
+- `maxResults` (number, optional): Maximum number of related videos (default: 10)
+
+### get_channel_info
+
+Gets information about a YouTube channel.
+
+**Parameters:**
+- `channelId` (string): YouTube channel ID
+
+### search_videos
+
+Searches for videos on YouTube.
+
+**Parameters:**
+- `query` (string): Search query
+- `maxResults` (number, optional): Maximum number of results (default: 10)
+
+### get_video_thumbnails
+
+Gets thumbnail information for a video.
+
+**Parameters:**
+- `videoId` (string): YouTube video ID
 
 ## MCP Integration
 
