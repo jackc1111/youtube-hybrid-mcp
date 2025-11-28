@@ -388,17 +388,24 @@ class YouTubeMCPServer {
           const availableLanguages: string[] = [];
 
           let inSubsSection = false;
+          let inCaptionsSection = false;
           for (const line of lines) {
             if (line.includes('Available subtitles')) {
               inSubsSection = true;
+              inCaptionsSection = false;
               continue;
             }
-            if (inSubsSection && line.trim() === '') {
-              break; // End of subtitles section
+            if (line.includes('Available automatic captions')) {
+              inCaptionsSection = true;
+              inSubsSection = false;
+              continue;
             }
-            if (inSubsSection && line.includes(':')) {
+            if ((inSubsSection || inCaptionsSection) && line.trim() === '') {
+              break; // End of section
+            }
+            if ((inSubsSection || inCaptionsSection) && line.includes(':')) {
               const lang = line.split(':')[0].trim();
-              if (lang && lang !== 'Language') {
+              if (lang && lang !== 'Language' && lang !== 'Name') {
                 availableLanguages.push(lang);
               }
             }
