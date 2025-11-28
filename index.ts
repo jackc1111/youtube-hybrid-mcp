@@ -270,6 +270,27 @@ class YouTubeMCPServer {
 
   private async getSubtitles(videoId: string, language: string) {
     try {
+      // First, check if subtitles are available
+      const availableSubs = await this.checkSubtitlesAvailability(videoId, language);
+
+      if (!availableSubs.hasSubtitles) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                videoId,
+                language,
+                available: false,
+                message: "No auto-generated subtitles available for this video. YouTube only generates subtitles for videos with sufficient spoken content.",
+                availableLanguages: availableSubs.availableLanguages
+              }, null, 2)
+            }
+          ]
+        };
+      }
+
+      // Subtitles are available, proceed with download
       const tempBase = join(tmpdir(), `subs_${videoId}_${language}`);
       await new Promise((resolve, reject) => {
         const ytDlp = spawn('yt-dlp', [
@@ -324,6 +345,7 @@ class YouTubeMCPServer {
             text: JSON.stringify({
               videoId,
               language,
+              available: true,
               transcript
             }, null, 2)
           }
@@ -339,6 +361,69 @@ class YouTubeMCPServer {
         ]
       };
     }
+  }
+
+  private async checkSubtitlesAvailability(videoId: string, language: string): Promise<{hasSubtitles: boolean, availableLanguages: string[]}> {
+    return new Promise((resolve) => {
+      const ytDlp = spawn('yt-dlp', [
+        '--list-subs',
+        `https://www.youtube.com/watch?v=${videoId}`
+      ]);
+
+      let output = '';
+      let errorOutput = '';
+
+      ytDlp.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      ytDlp.stderr.on('data', (data) => {
+        errorOutput += data.toString();
+      });
+
+      ytDlp.on('close', (code) => {
+        if (code === 0) {
+          // Parse the output to check for available subtitles
+          const lines = output.split('\n');
+          const availableLanguages: string[] = [];
+
+          let inSubsSection = false;
+          for (const line of lines) {
+            if (line.includes('Available subtitles')) {
+              inSubsSection = true;
+              continue;
+            }
+            if (inSubsSection && line.trim() === '') {
+              break; // End of subtitles section
+            }
+            if (inSubsSection && line.includes(':')) {
+              const lang = line.split(':')[0].trim();
+              if (lang && lang !== 'Language') {
+                availableLanguages.push(lang);
+              }
+            }
+          }
+
+          const hasRequestedLanguage = availableLanguages.includes(language);
+          resolve({
+            hasSubtitles: hasRequestedLanguage,
+            availableLanguages
+          });
+        } else {
+          resolve({
+            hasSubtitles: false,
+            availableLanguages: []
+          });
+        }
+      });
+
+      ytDlp.on('error', () => {
+        resolve({
+          hasSubtitles: false,
+          availableLanguages: []
+        });
+      });
+    });
   }
 
   private async getRelatedVideos(videoId: string, maxResults: number) {
