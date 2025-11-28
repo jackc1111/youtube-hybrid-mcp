@@ -403,9 +403,17 @@ class YouTubeMCPServer {
             if ((inSubsSection || inCaptionsSection) && line.trim() === '') {
               break; // End of section
             }
-            if ((inSubsSection || inCaptionsSection) && line.includes(':')) {
-              const lang = line.split(':')[0].trim();
-              if (lang && lang !== 'Language' && lang !== 'Name') {
+            if (inSubsSection && line.includes(':')) {
+              // Regular subtitles format: "en       English                 vtt, srt..."
+              const lang = line.split(/\s+/)[0].trim();
+              if (lang && lang !== 'Language' && lang !== 'Name' && lang.length === 2) {
+                availableLanguages.push(lang);
+              }
+            }
+            if (inCaptionsSection && !line.includes('Available') && line.trim() && !line.includes('Language')) {
+              // Automatic captions format: "en             English, English..."
+              const lang = line.split(/\s+/)[0].trim();
+              if (lang && lang.length >= 2 && lang.length <= 5) { // language codes like 'en', 'en-US', etc.
                 availableLanguages.push(lang);
               }
             }
