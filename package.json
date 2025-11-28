@@ -24,7 +24,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/youtube-hybrid-mcp.git"
+    "url": "https://github.com/jackc1111/youtube-hybrid-mcp.git"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.22.0",
