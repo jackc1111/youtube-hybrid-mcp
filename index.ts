@@ -77,23 +77,89 @@ class YouTubeMCPServer {
             }
           },
           {
-            name: "get_subtitles",
-            description: "Get video subtitles using yt-dlp",
-            inputSchema: {
-              type: "object",
-              properties: {
-                videoId: {
-                  type: "string",
-                  description: "YouTube video ID"
-                },
-                language: {
-                  type: "string",
-                  description: "Language code (default: en)",
-                  default: "en"
-                }
-              },
-              required: ["videoId"]
-            }
+              name: "get_subtitles",
+              description: "Get video subtitles using yt-dlp",
+              inputSchema: {
+                  type: "object",
+                  properties: {
+                      videoId: {
+                          type: "string",
+                          description: "YouTube video ID"
+                      },
+                      language: {
+                          type: "string",
+                          description: "Language code (default: en)",
+                          default: "en"
+                      }
+                  },
+                  required: ["videoId"]
+              }
+          },
+          {
+              name: "get_related_videos",
+              description: "Get videos related to a specific video",
+              inputSchema: {
+                  type: "object",
+                  properties: {
+                      videoId: {
+                          type: "string",
+                          description: "YouTube video ID"
+                      },
+                      maxResults: {
+                          type: "number",
+                          description: "Maximum number of related videos (default: 10)",
+                          default: 10
+                      }
+                  },
+                  required: ["videoId"]
+              }
+          },
+          {
+              name: "get_channel_info",
+              description: "Get information about a YouTube channel",
+              inputSchema: {
+                  type: "object",
+                  properties: {
+                      channelId: {
+                          type: "string",
+                          description: "YouTube channel ID"
+                      }
+                  },
+                  required: ["channelId"]
+              }
+          },
+          {
+              name: "search_videos",
+              description: "Search for videos on YouTube",
+              inputSchema: {
+                  type: "object",
+                  properties: {
+                      query: {
+                          type: "string",
+                          description: "Search query"
+                      },
+                      maxResults: {
+                          type: "number",
+                          description: "Maximum number of results (default: 10)",
+                          default: 10
+                      }
+                  },
+                  required: ["query"]
+              }
+          },
+          {
+              name: "get_video_thumbnails",
+              description: "Get thumbnail information for a video",
+              inputSchema: {
+                  type: "object",
+                  properties: {
+                      videoId: {
+                          type: "string",
+                          description: "YouTube video ID"
+                      }
+                  },
+                  required: ["videoId"]
+              }
           }
         ]
       };
@@ -113,6 +179,14 @@ class YouTubeMCPServer {
           return await this.getComments((args as any).videoId, (args as any).maxResults || 10);
         case "get_subtitles":
           return await this.getSubtitles((args as any).videoId, (args as any).language || "en");
+        case "get_related_videos":
+          return await this.getRelatedVideos((args as any).videoId, (args as any).maxResults || 10);
+        case "get_channel_info":
+          return await this.getChannelInfo((args as any).channelId);
+        case "search_videos":
+          return await this.searchVideos((args as any).query, (args as any).maxResults || 10);
+        case "get_video_thumbnails":
+          return await this.getVideoThumbnails((args as any).videoId);
         default:
           throw new Error(`Unknown tool: ${name}`);
       }
@@ -261,6 +335,178 @@ class YouTubeMCPServer {
           {
             type: "text",
             text: `Error getting subtitles: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+
+  private async getRelatedVideos(videoId: string, maxResults: number) {
+    try {
+      // First get the video info to find the channel
+      const videoResponse = await youtube.videos.list({
+        part: ['snippet'],
+        id: [videoId]
+      });
+
+      const video = videoResponse.data.items?.[0];
+      if (!video) {
+        throw new Error("Video not found");
+      }
+
+      const channelId = video.snippet?.channelId;
+      if (!channelId) {
+        throw new Error("Channel ID not found for video");
+      }
+
+      // Get other videos from the same channel
+      const response = await youtube.search.list({
+        part: ['snippet'],
+        channelId: channelId,
+        type: ['video'],
+        maxResults: maxResults + 1, // +1 to account for the original video
+        order: 'date'
+      });
+
+      const videos = response.data.items
+        ?.filter(item => item.id?.videoId !== videoId) // Exclude the original video
+        ?.slice(0, maxResults) // Limit to maxResults
+        ?.map(item => ({
+          videoId: item.id?.videoId,
+          title: item.snippet?.title,
+          channelTitle: item.snippet?.channelTitle,
+          publishedAt: item.snippet?.publishedAt,
+          description: item.snippet?.description
+        })) || [];
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              note: "Showing other videos from the same channel (YouTube API doesn't provide true 'related videos')",
+              videos
+            }, null, 2)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error getting related videos: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+
+  private async getChannelInfo(channelId: string) {
+    try {
+      const response = await youtube.channels.list({
+        part: ['snippet', 'statistics'],
+        id: [channelId]
+      });
+
+      const channel = response.data.items?.[0];
+      if (!channel) {
+        throw new Error("Channel not found");
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              title: channel.snippet?.title,
+              description: channel.snippet?.description,
+              publishedAt: channel.snippet?.publishedAt,
+              subscriberCount: channel.statistics?.subscriberCount,
+              videoCount: channel.statistics?.videoCount,
+              viewCount: channel.statistics?.viewCount
+            }, null, 2)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error getting channel info: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+
+  private async searchVideos(query: string, maxResults: number) {
+    try {
+      const response = await youtube.search.list({
+        part: ['snippet'],
+        q: query,
+        type: ['video'],
+        maxResults: maxResults
+      });
+
+      const videos = response.data.items?.map(item => ({
+        videoId: item.id?.videoId,
+        title: item.snippet?.title,
+        channelTitle: item.snippet?.channelTitle,
+        publishedAt: item.snippet?.publishedAt,
+        description: item.snippet?.description
+      })) || [];
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(videos, null, 2)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error searching videos: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+
+  private async getVideoThumbnails(videoId: string) {
+    try {
+      const response = await youtube.videos.list({
+        part: ['snippet'],
+        id: [videoId]
+      });
+
+      const video = response.data.items?.[0];
+      if (!video) {
+        throw new Error("Video not found");
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              videoId,
+              thumbnails: video.snippet?.thumbnails
+            }, null, 2)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error getting video thumbnails: ${error instanceof Error ? error.message : String(error)}`
           }
         ]
       };
