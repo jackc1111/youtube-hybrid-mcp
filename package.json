@@ -1,0 +1,37 @@
+{
+  "name": "youtube-hybrid-mcp",
+  "version": "1.0.0",
+  "description": "Hybrid YouTube MCP server using API and yt-dlp",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "youtube-hybrid-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "mcp",
+    "youtube",
+    "api",
+    "video",
+    "subtitles",
+    "comments"
+  ],
+  "author": "jackc1111",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/youtube-hybrid-mcp.git"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.22.0",
+    "googleapis": "^166.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.25",
+    "typescript": "^5.9.3"
+  }
+}
