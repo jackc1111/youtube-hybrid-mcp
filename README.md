@@ -4,9 +4,11 @@ A Model Context Protocol (MCP) server that provides YouTube video tools using bo
 
 ## Features
 
-- Get video metadata (title, description, views, likes, etc.)
+- Get video metadata (title, description, views, likes, channelId, etc.)
 - Retrieve video comments
-- Extract video subtitles/transcripts
+- Extract video subtitles/transcripts (with auto-generated captions support)
+- Robust thumbnail extraction
+- Search videos and retrieve related channel content
 
 ## Prerequisites
 
@@ -83,10 +85,16 @@ brew install yt-dlp
 ```
 
 ### Linux
+
+**Recommended (Latest Build):**
 ```bash
-pip install yt-dlp
-# or using package manager
-# Ubuntu/Debian
+sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
+sudo chmod a+rx /usr/local/bin/yt-dlp
+```
+
+**Using package manager (may be outdated):**
+```bash
+# Ubuntu/Debian/Mint
 sudo apt install yt-dlp
 # Fedora
 sudo dnf install yt-dlp
@@ -206,6 +214,8 @@ Retrieves metadata for a YouTube video.
 
 **Parameters:**
 - `videoId` (string): YouTube video ID
+
+**Returns:** title, description, publishedAt, channelId, channelTitle, viewCount, likeCount, commentCount.
 
 ### get_comments
 

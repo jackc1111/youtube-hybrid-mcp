@@ -304,6 +304,8 @@ class YouTubeMCPServer {
           '--write-auto-subs',
           '--sub-langs', language,
           '--skip-download',
+          '--ignore-errors',
+          '--no-warnings',
           '-o', tempBase,
           `https://www.youtube.com/watch?v=${videoId}`
         ]);
