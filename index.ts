@@ -77,94 +77,94 @@ class YouTubeMCPServer {
             }
           },
           {
-              name: "get_subtitles",
-              description: "Get video subtitles using yt-dlp",
-              inputSchema: {
-                  type: "object",
-                  properties: {
-                      videoId: {
-                          type: "string",
-                          description: "YouTube video ID"
-                      },
-                      language: {
-                          type: "string",
-                          description: "Language code (default: en)",
-                          default: "en"
-                      },
-                      saveToFile: {
-                          type: "boolean",
-                          description: "Save subtitles as .vtt file (default: false)",
-                          default: false
-                      }
-                  },
-                  required: ["videoId"]
-              }
+            name: "get_subtitles",
+            description: "Get video subtitles using yt-dlp",
+            inputSchema: {
+              type: "object",
+              properties: {
+                videoId: {
+                  type: "string",
+                  description: "YouTube video ID"
+                },
+                language: {
+                  type: "string",
+                  description: "Language code (default: en)",
+                  default: "en"
+                },
+                saveToFile: {
+                  type: "boolean",
+                  description: "Save subtitles as .vtt file (default: false)",
+                  default: false
+                }
+              },
+              required: ["videoId"]
+            }
           },
           {
-              name: "get_related_videos",
-              description: "Get videos related to a specific video",
-              inputSchema: {
-                  type: "object",
-                  properties: {
-                      videoId: {
-                          type: "string",
-                          description: "YouTube video ID"
-                      },
-                      maxResults: {
-                          type: "number",
-                          description: "Maximum number of related videos (default: 10)",
-                          default: 10
-                      }
-                  },
-                  required: ["videoId"]
-              }
+            name: "get_related_videos",
+            description: "Get videos related to a specific video",
+            inputSchema: {
+              type: "object",
+              properties: {
+                videoId: {
+                  type: "string",
+                  description: "YouTube video ID"
+                },
+                maxResults: {
+                  type: "number",
+                  description: "Maximum number of related videos (default: 10)",
+                  default: 10
+                }
+              },
+              required: ["videoId"]
+            }
           },
           {
-              name: "get_channel_info",
-              description: "Get information about a YouTube channel",
-              inputSchema: {
-                  type: "object",
-                  properties: {
-                      channelId: {
-                          type: "string",
-                          description: "YouTube channel ID"
-                      }
-                  },
-                  required: ["channelId"]
-              }
+            name: "get_channel_info",
+            description: "Get information about a YouTube channel",
+            inputSchema: {
+              type: "object",
+              properties: {
+                channelId: {
+                  type: "string",
+                  description: "YouTube channel ID"
+                }
+              },
+              required: ["channelId"]
+            }
           },
           {
-              name: "search_videos",
-              description: "Search for videos on YouTube",
-              inputSchema: {
-                  type: "object",
-                  properties: {
-                      query: {
-                          type: "string",
-                          description: "Search query"
-                      },
-                      maxResults: {
-                          type: "number",
-                          description: "Maximum number of results (default: 10)",
-                          default: 10
-                      }
-                  },
-                  required: ["query"]
-              }
+            name: "search_videos",
+            description: "Search for videos on YouTube",
+            inputSchema: {
+              type: "object",
+              properties: {
+                query: {
+                  type: "string",
+                  description: "Search query"
+                },
+                maxResults: {
+                  type: "number",
+                  description: "Maximum number of results (default: 10)",
+                  default: 10
+                }
+              },
+              required: ["query"]
+            }
           },
           {
-              name: "get_video_thumbnails",
-              description: "Get thumbnail information for a video",
-              inputSchema: {
-                  type: "object",
-                  properties: {
-                      videoId: {
-                          type: "string",
-                          description: "YouTube video ID"
-                      }
-                  },
-                  required: ["videoId"]
-              }
+            name: "get_video_thumbnails",
+            description: "Get thumbnail information for a video",
+            inputSchema: {
+              type: "object",
+              properties: {
+                videoId: {
+                  type: "string",
+                  description: "YouTube video ID"
+                }
+              },
+              required: ["videoId"]
+            }
           }
         ]
       };
@@ -218,6 +218,7 @@ class YouTubeMCPServer {
               title: video.snippet?.title,
               description: video.snippet?.description,
               publishedAt: video.snippet?.publishedAt,
+              channelId: video.snippet?.channelId,
               channelTitle: video.snippet?.channelTitle,
               viewCount: video.statistics?.viewCount,
               likeCount: video.statistics?.likeCount,
@@ -296,10 +297,11 @@ class YouTubeMCPServer {
       }
 
       // Subtitles are available, proceed with download
-      const tempBase = join(tmpdir(), `subs_${videoId}_${language}`);
+      const tempBase = join(tmpdir(), `subs_${videoId}_${Date.now()}`);
       await new Promise((resolve, reject) => {
         const ytDlp = spawn('yt-dlp', [
           '--write-subs',
+          '--write-auto-subs',
           '--sub-langs', language,
           '--skip-download',
           '-o', tempBase,
@@ -317,7 +319,24 @@ class YouTubeMCPServer {
         ytDlp.on('error', reject);
       });
 
-      const vttFile = `${tempBase}.${language}.vtt`;
+      // yt-dlp appends .<lang>.vtt to the output name
+      // We try to find the file that was actually created
+      const possibleExtensions = [`.${language}.vtt`, '.en.vtt', '.vtt'];
+      let vttFile = '';
+      for (const ext of possibleExtensions) {
+        const path = `${tempBase}${ext}`;
+        try {
+          if (readFileSync(path)) {
+            vttFile = path;
+            break;
+          }
+        } catch (e) { }
+      }
+
+      if (!vttFile) {
+        throw new Error(`Subtitle file not found after download (tried base: ${tempBase})`);
+      }
+
       const vttContent = readFileSync(vttFile, 'utf-8');
       unlinkSync(vttFile);
 
@@ -392,7 +411,7 @@ class YouTubeMCPServer {
     }
   }
 
-  private async checkSubtitlesAvailability(videoId: string, language: string): Promise<{hasSubtitles: boolean, availableLanguages: string[]}> {
+  private async checkSubtitlesAvailability(videoId: string, language: string): Promise<{ hasSubtitles: boolean, availableLanguages: string[] }> {
     return new Promise((resolve) => {
       const ytDlp = spawn('yt-dlp', [
         '--list-subs',
